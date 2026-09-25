@@ -179,6 +179,12 @@
             </TabItem>
             <TabItem>
                 <TabItem.Header>
+                    <components:TabHeader Text="AutoGen" />
+                </TabItem.Header>
+                <tabs:AutoGenTabView />
+            </TabItem>
+            <TabItem>
+                <TabItem.Header>
                     <components:TabHeader Text="Settings" />
                 </TabItem.Header>
                 <tabs:SettingsTabView />
