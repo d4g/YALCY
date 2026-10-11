@@ -173,7 +173,7 @@
             </TabItem>
             <TabItem>
                 <TabItem.Header>
-                    <components:TabHeader Text="AutoGen" />
+                    <components:TabHeader Text="Lighting" />
                 </TabItem.Header>
                 <tabs:AutoGenTabView />
             </TabItem>

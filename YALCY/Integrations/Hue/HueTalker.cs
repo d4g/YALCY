@@ -30,6 +30,11 @@ public class HueTalker : IDisposable
     private MainWindowViewModel? _mainViewModel;
     private readonly ManualStrobeFlasher _manualStrobeFlasher = new(ex => Console.WriteLine($"Hue manual strobe error: {ex.Message}"));
 
+    public HueTalker()
+    {
+        LightingLimits.Changed += OnLightingLimitsChanged;
+    }
+
     public async Task EnableHue(bool isEnabled, string? bridgeIp, MainWindowViewModel? viewModel = null)
     {
         Console.WriteLine("EnableHue called.");
@@ -105,6 +110,9 @@ public class HueTalker : IDisposable
                 _baseEntLayer.SetState(_cancellationTokenSource.Token, new RGBColor("000000"), 0);
                 lock (_ledStateLock)
                 {
+                    // New layers start black, forget what was sent to the old ones.
+                    _renderedTargets.Clear();
+                    _lastCueColors.Clear();
                     RenderLeds();
                     ApplyStrobeIdle();
                 }
@@ -322,6 +330,8 @@ public class HueTalker : IDisposable
                 case StageKitTalker.CommandId.DisableAll:
                     StopStrobe();
                     _blueMask = _greenMask = _yellowMask = _redMask = 0;
+                    // No cue (menu, song end, safety blackout): really off, not the base brightness.
+                    _lastCueColors.Clear();
                     break;
 
                 default:
@@ -338,6 +348,13 @@ public class HueTalker : IDisposable
     private byte _yellowMask;
     private byte _redMask;
     private bool _strobeRunning;
+
+    // What was last sent to each pattern lamp, so an unchanged lamp isn't re-sent (that would restart its fade).
+    private readonly Dictionary<byte, (string Hex, double Brightness)> _renderedTargets = new();
+
+    // Last cue colour per pattern lamp; a lamp that goes dark keeps it at the base brightness.
+    private readonly Dictionary<byte, string> _lastCueColors = new();
+
     private volatile bool _streamingActive;
     private volatile bool _testStrobeActive;
     private int _testStrobeRunning;
@@ -429,6 +446,8 @@ public class HueTalker : IDisposable
                 _effectLayer?.SetState(CancellationToken.None, new RGBColor("000000"), 0);
             }
 
+            // A lamp may have changed its role (e.g. from Strobe to Auto), so send every lamp again.
+            _renderedTargets.Clear();
             RenderLeds();
             if (!_strobeRunning)
             {
@@ -472,7 +491,7 @@ public class HueTalker : IDisposable
 
             if (role == HueLampRoles.Off)
             {
-                light.SetState(CancellationToken.None, new RGBColor("000000"), 0);
+                SetPatternLamp(light, "000000", 0, TimeSpan.Zero);
                 continue;
             }
 
@@ -501,7 +520,42 @@ public class HueTalker : IDisposable
                 (_greenMask & positions) != 0,
                 (_yellowMask & positions) != 0);
 
-            light.SetState(CancellationToken.None, new RGBColor($"{r:X2}{g:X2}{b:X2}"), isActive ? 1 : 0);
+            if (isActive)
+            {
+                // Lighting up is always instant, so accents stay on the beat.
+                var hex = $"{r:X2}{g:X2}{b:X2}";
+                _lastCueColors[light.Id] = hex;
+                SetPatternLamp(light, hex, LightingLimits.MaxBrightness, TimeSpan.Zero);
+            }
+            else if (_lastCueColors.TryGetValue(light.Id, out var lastHex))
+            {
+                // Keep the hue and only dim, so the fade doesn't wash through black or white.
+                SetPatternLamp(light, lastHex, LightingLimits.BaseBrightness, LightingLimits.FadeOut);
+            }
+            else
+            {
+                SetPatternLamp(light, "000000", 0, TimeSpan.Zero);
+            }
+        }
+    }
+
+    /// <summary>Sends a pattern lamp's new state, unless it already has it. Must hold _ledStateLock.</summary>
+    private void SetPatternLamp(EntertainmentLight light, string hex, double brightness, TimeSpan fade)
+    {
+        if (_renderedTargets.TryGetValue(light.Id, out var current) && current.Hex == hex && current.Brightness == brightness)
+        {
+            return;
+        }
+
+        _renderedTargets[light.Id] = (hex, brightness);
+        light.SetState(CancellationToken.None, new RGBColor(hex), brightness, fade);
+    }
+
+    private void OnLightingLimitsChanged()
+    {
+        lock (_ledStateLock)
+        {
+            RenderLeds();
         }
     }
 
@@ -585,8 +639,8 @@ public class HueTalker : IDisposable
             return Task.CompletedTask;
         }
 
-        // The safety blackout (no data from YARG) would swallow the test flashes, so the test bypasses it.
-        if (UsbDeviceMonitor.IsOutputSuppressed && !_testStrobeActive)
+        // The safety blackout (no data from YARG) would swallow the test flashes, so the tests bypass it.
+        if (UsbDeviceMonitor.IsOutputSuppressed && !_testStrobeActive && !LightingTestShow.IsRunning)
         {
             isOn = false;
         }
@@ -596,16 +650,20 @@ public class HueTalker : IDisposable
             if (HasDedicatedStrobeLamps())
             {
                 var settings = _lampSettings;
+                // While strobing only the strobe limits count; the idle colour/brightness is for when no strobe runs.
+                var brightness = isOn ? LightingLimits.StrobeMax : LightingLimits.StrobeMin;
                 foreach (var light in _baseEntLayer!.Where(l => settings.RoleFor(l.Id) == HueLampRoles.Strobe))
                 {
-                    light.SetState(CancellationToken.None, new RGBColor(isOn ? "FFFFFF" : "000000"), isOn ? 1 : 0);
+                    light.SetState(CancellationToken.None, new RGBColor("FFFFFF"), brightness);
                 }
 
                 return Task.CompletedTask;
             }
 
+            // Flashing everything: the effect layer covers the pattern lamps while lit. In the pause it is
+            // transparent (brightness 0), so the pattern underneath (with its base brightness) shows through.
             var layer = _effectLayer ?? _baseEntLayer;
-            layer?.SetState(CancellationToken.None, new RGBColor(isOn ? "FFFFFF" : "000000"), isOn ? 1 : 0);
+            layer?.SetState(CancellationToken.None, new RGBColor(isOn ? "FFFFFF" : "000000"), isOn ? LightingLimits.StrobeMax : 0);
         }
 
         return Task.CompletedTask;
@@ -686,6 +744,7 @@ public class HueTalker : IDisposable
 
     public void Dispose()
     {
+        LightingLimits.Changed -= OnLightingLimitsChanged;
         _manualStrobeFlasher.Stop(SetManualStrobeStateAsync);
         _cancellationTokenSource?.Cancel();
         _client?.Dispose();
