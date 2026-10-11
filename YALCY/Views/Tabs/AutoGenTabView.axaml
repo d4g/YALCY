@@ -8,7 +8,45 @@
              mc:Ignorable="d">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="5" Spacing="6">
-            <TextBlock Text="Strobe" FontWeight="Bold" FontSize="16" Margin="5,0,5,0" />
+            <!-- Test show -->
+            <StackPanel Orientation="Horizontal" Margin="5,0,5,4" Spacing="8">
+                <ToggleButton Content="Test show" IsChecked="{Binding LightingTestShowRunning, Mode=TwoWay}" />
+                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.7" MaxWidth="520"
+                           Text="Runs until you press it again: colours chase around the stage, strobe burst every 5 s. Best with YARG closed, otherwise its cues mix in." />
+            </StackPanel>
+
+            <!-- Brightness limits -->
+            <TextBlock Text="Brightness" FontWeight="Bold" FontSize="16" Margin="5,0,5,0" />
+            <TextBlock Margin="5,0,5,0" TextWrapping="Wrap"
+                       Text="Makes the show calmer. Lit lamps go up to the maximum. When a lamp goes dark, it stays at the base brightness in its last colour instead of turning black. Without a cue (menu, end of the song) lamps still turn off completely. Currently applies to Hue only." />
+            <Grid ColumnDefinitions="170,300,70" RowDefinitions="Auto,Auto,Auto" Margin="5,4,5,0">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Maximum brightness" VerticalAlignment="Center" />
+                <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding LightingMaxBrightness, Mode=TwoWay}" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding LightingMaxBrightness, StringFormat='{}{0:0} %'}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Base brightness" VerticalAlignment="Center" />
+                <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding LightingBaseBrightness, Mode=TwoWay}" />
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding LightingBaseBrightness, StringFormat='{}{0:0} %'}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Fade out" VerticalAlignment="Center" />
+                <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="1000" Value="{Binding LightingFadeOutMs, Mode=TwoWay}" />
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding LightingFadeOutMs, StringFormat='{}{0:0} ms'}" VerticalAlignment="Center" Margin="8,0,0,0" />
+            </Grid>
+            <TextBlock Margin="5,0,5,8" TextWrapping="Wrap" Opacity="0.7"
+                       Text="Fade out: lamps dim smoothly instead of cutting to dark. Lighting up stays instant, strobes stay hard. Around 100–200 ms feels soft without blurring fast cues." />
+
+            <!-- Strobe limits -->
+            <TextBlock Text="Strobe brightness" FontWeight="Bold" FontSize="16" Margin="5,0,5,0" />
+            <TextBlock Margin="5,0,5,0" TextWrapping="Wrap"
+                       Text="Flash: brightness of each strobe flash. Pause: brightness between two flashes, so the strobe swings between dim and bright instead of black and full. The pause applies to lamps set to 'Strobe' in the Hue tab; when all lamps flash, the normal light shows in the pause. Currently applies to Hue only." />
+            <Grid ColumnDefinitions="170,300,70" RowDefinitions="Auto,Auto" Margin="5,4,5,8">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Flash" VerticalAlignment="Center" />
+                <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding LightingStrobeMax, Mode=TwoWay}" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding LightingStrobeMax, StringFormat='{}{0:0} %'}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Pause" VerticalAlignment="Center" />
+                <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding LightingStrobeMin, Mode=TwoWay}" />
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding LightingStrobeMin, StringFormat='{}{0:0} %'}" VerticalAlignment="Center" Margin="8,0,0,0" />
+            </Grid>
+
+            <TextBlock Text="Generated strobes" FontWeight="Bold" FontSize="16" Margin="5,0,5,0" />
             <TextBlock Margin="5,0,5,0" TextWrapping="Wrap"
                        Text="YALCY can trigger strobes itself from gameplay data. The result goes to every output (Hue strobe lamps, DMX, Stage Kit ...). A strobe that comes from the chart always takes priority." />
 

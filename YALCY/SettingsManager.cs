@@ -6,6 +6,7 @@ using System.Linq;
 using HueApi.Models.Clip;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using YALCY.Integrations;
 using YALCY.Integrations.HomeAssistant;
 using YALCY.Integrations.AutoGen;
 using YALCY.Integrations.Hue;
@@ -43,6 +44,7 @@ public class SettingsContainer
     public string? HueStrobeIdleColor { get; set; }
     public int? HueStrobeIdleBrightness { get; set; }
     public AutoStrobeSettingsData? AutoStrobe { get; set; }
+    public LightingLimitsSettingsData? LightingLimits { get; set; }
     public int? LifxStrobeMode { get; set; }
     public int? OpenRgbStrobeMode { get; set; }
     public int? HomeAssistantStrobeMode { get; set; }
@@ -101,6 +103,7 @@ internal static class SettingsManager
         HueStrobeIdleColor = HueColorHelper.DefaultStrobeIdleColor,
         HueStrobeIdleBrightness = HueColorHelper.DefaultStrobeIdleBrightness,
         AutoStrobe = new AutoStrobeSettingsData(),
+        LightingLimits = new LightingLimitsSettingsData(),
         LifxStrobeMode = StrobeOutputModes.StrobeCommand,
         OpenRgbStrobeMode = StrobeOutputModes.ManualFlash,
         HomeAssistantStrobeMode = StrobeOutputModes.StrobeCommand,
@@ -181,6 +184,7 @@ internal static class SettingsManager
     public static string HueStrobeIdleColor { get; private set; } = HueColorHelper.DefaultStrobeIdleColor;
     public static int HueStrobeIdleBrightness { get; private set; } = HueColorHelper.DefaultStrobeIdleBrightness;
     public static AutoStrobeSettingsData AutoStrobe { get; private set; } = new();
+    public static LightingLimitsSettingsData LightingLimits { get; private set; } = new();
     public static int LifxStrobeMode { get; set; }
     public static int OpenRgbStrobeMode { get; set; }
     public static int HomeAssistantStrobeMode { get; set; }
@@ -304,6 +308,8 @@ internal static class SettingsManager
         HueStrobeIdleBrightness = settings.HueStrobeIdleBrightness ?? HueColorHelper.DefaultStrobeIdleBrightness;
         settings.AutoStrobe = mainViewModel.GetAutoStrobeSettings();
         AutoStrobe = settings.AutoStrobe.Clone();
+        settings.LightingLimits = mainViewModel.GetLightingLimits();
+        LightingLimits = settings.LightingLimits.Clone();
         settings.LifxStrobeMode = mainViewModel.LifxStrobeMode;
         settings.LifxOptions = mainViewModel.LifxOptions;
         settings.OpenRgbStrobeMode = mainViewModel.OpenRgbStrobeMode;
@@ -567,6 +573,7 @@ internal static class SettingsManager
             HueStrobeIdleColor = HueColorHelper.NormalizeHex(container.HueStrobeIdleColor) ?? HueColorHelper.DefaultStrobeIdleColor;
             HueStrobeIdleBrightness = Math.Clamp(container.HueStrobeIdleBrightness ?? HueColorHelper.DefaultStrobeIdleBrightness, 0, 100);
             AutoStrobe = (container.AutoStrobe ?? new AutoStrobeSettingsData()).Normalized();
+            LightingLimits = (container.LightingLimits ?? new LightingLimitsSettingsData()).Normalized();
             LifxStrobeMode = StrobeOutputModes.Normalize(container.LifxStrobeMode ?? StrobeOutputModes.StrobeCommand);
             LifxOptions = container.LifxOptions ?? new();
             OpenRgbStrobeMode = StrobeOutputModes.Normalize(container.OpenRgbStrobeMode ?? StrobeOutputModes.ManualFlash);
@@ -620,6 +627,7 @@ internal static class SettingsManager
             HueStrobeIdleColor = HueColorHelper.DefaultStrobeIdleColor;
             HueStrobeIdleBrightness = HueColorHelper.DefaultStrobeIdleBrightness;
             AutoStrobe = new AutoStrobeSettingsData();
+            LightingLimits = new LightingLimitsSettingsData();
             LifxStrobeMode = StrobeOutputModes.StrobeCommand;
             LifxOptions = new();
             OpenRgbStrobeMode = StrobeOutputModes.ManualFlash;
